@@ -1,3 +1,6 @@
 [submodule "Jinbo_Network-Backend"]
 	path = Jinbo_Network-Backend
 	url = https://github.com/DavidYordan/Jinbo_Network-Backend.git
+[submodule "jinbo_network-frontend"]
+	path = jinbo_network-frontend
+	url = https://github.com/DavidYordan/jinbo_network-frontend.git
