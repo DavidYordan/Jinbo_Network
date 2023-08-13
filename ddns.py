@@ -7,22 +7,22 @@ def get_current_public_ip():
         session.trust_env = False
         response = session.get('https://api64.ipify.org?format=json')
         if response.status_code != 200:
-            print(f'状态码错误:{response.content}')
+            print(f'Status code error: {response.content}')
             return None
         data = response.json()
-        current_ip = data.get('ip')
-        print(f'当前公网IP:{current_ip}')
-        return current_ip
+        current_public_ip = data.get('ip')
+        print(f'Current public IP: {current_public_ip}')
+        return current_public_ip
     except Exception as e:
         print(e)
         return None
 
-def get_cloudflare_ip(zone_identifier, domain, read_key):
+def get_cloudflare_ip(zone_identifier, domain, read_api_key):
     try:
         url = f'https://api.cloudflare.com/client/v4/zones/{zone_identifier}/dns_records'
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {read_key}',
+            'Authorization': f'Bearer {read_api_key}',
         }
         params = {
             'zone_name': domain,
@@ -30,64 +30,64 @@ def get_cloudflare_ip(zone_identifier, domain, read_key):
         }
         response = requests.get(url, headers=headers, params=params)
         if response.status_code != 200:
-            print(f'状态码错误:{response.content}')
+            print(f'Status code error: {response.content}')
             return None
         data = response.json()
         if not data.get('success', ''):
-            print(f'获取失败:{data}')
+            print(f'Failed to retrieve: {data}')
             return None
         return data.get('result', [])
     except Exception as e:
         print(e)
         return None
 
-def update_dns_record(zone_identifier, item, update_key, current_ip):
+def update_dns_record(zone_identifier, record, update_api_key, current_public_ip):
     try:
-        url = f'https://api.cloudflare.com/client/v4/zones/{zone_identifier}/dns_records/{item["id"]}'
+        url = f'https://api.cloudflare.com/client/v4/zones/{zone_identifier}/dns_records/{record["id"]}'
         headers = {
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {update_key}',
+            'Authorization': f'Bearer {update_api_key}',
         }
         body = {
-            'content': f'{current_ip}',
-            'name': f'{item["name"]}',
+            'content': f'{current_public_ip}',
+            'name': f'{record["name"]}',
             'type': 'A'
         }
         response = requests.put(url, headers=headers, json=body)
         if response.status_code != 200:
-            print(f'状态码错误:{response.content}')
+            print(f'Status code error: {response.content}')
             return False
         data = response.json()
         if not data.get('success', ''):
-            print(f'更新失败:{data}')
+            print(f'Update failed: {data}')
             return False
-        print(f'更新成功:{data}')
+        print(f'Update successful: {data}')
         return True
     except Exception as e:
         print(e)
         return False
     
-def start(zone_identifier, domain, update_key, read_key):
-    last_check_time = 0
-    cloudflare_info = {}
-    update_sign = False
+def start(zone_identifier, domain, update_api_key, read_api_key):
+    last_check_timestamp = 0
+    cloudflare_records = {}
+    update_required = False
     while True:
-        current_time = time.time()
-        if (current_time - last_check_time >= 1800) or update_sign or (not cloudflare_info):
-            cloudflare_info = get_cloudflare_ip(zone_identifier, domain, read_key)
-            print(f'{cloudflare_info}')
-            update_sign = False
-            last_check_time = current_time
-        current_ip = get_current_public_ip()
-        if current_ip:
-            for item in cloudflare_info:
-                item_ip = item.get('content', '')
-                if item_ip == current_ip:
+        current_timestamp = time.time()
+        if (current_timestamp - last_check_timestamp >= 1800) or update_required or (not cloudflare_records):
+            cloudflare_records = get_cloudflare_ip(zone_identifier, domain, read_api_key)
+            print(f'{cloudflare_records}')
+            update_required = False
+            last_check_timestamp = current_timestamp
+        current_public_ip = get_current_public_ip()
+        if current_public_ip:
+            for record in cloudflare_records:
+                record_ip = record.get('content', '')
+                if record_ip == current_public_ip:
                     continue
-                update_dns_record(zone_identifier, item, update_key, current_ip)
-                update_sign = True
+                update_dns_record(zone_identifier, record, update_api_key, current_public_ip)
+                update_required = True
         else:
-            print('获取当前公网IP失败')
+            print('Failed to retrieve current public IP')
         time.sleep(30)
 
 if __name__ == '__main__':
@@ -97,7 +97,7 @@ if __name__ == '__main__':
 
     zone_identifier = config.get('cloudflare', 'zone_identifier')
     domain = config.get('cloudflare', 'domain')
-    update_key = config.get('cloudflare', 'update_key')
-    read_key = config.get('cloudflare', 'read_key')
+    update_api_key = config.get('cloudflare', 'update_api_key')
+    read_api_key = config.get('cloudflare', 'read_api_key')
 
-    start(zone_identifier, domain, update_key, read_key)
+    start(zone_identifier, domain, update_api_key, read_api_key)
