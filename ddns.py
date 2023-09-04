@@ -81,7 +81,7 @@ def start(zone_identifier, domain, update_api_key, read_api_key):
         current_public_ip = get_current_public_ip()
         if current_public_ip:
             for record in cloudflare_records:
-                record_ip = record.get('content', '')
+                record_ip = record.get('content')
                 if record_ip == current_public_ip:
                     continue
                 update_dns_record(zone_identifier, record, update_api_key, current_public_ip)
